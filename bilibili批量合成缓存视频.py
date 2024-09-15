@@ -62,11 +62,14 @@ def process_directory(directory_path, output_directory):
             print(f"读取 videoInfo.json 时发生错误: {e}")
             continue
 
-        # 明确指定封面图片的文件名
-        image_path = os.path.join(subdir, "image.jpg")
-        if not os.path.exists(image_path):
-            print(f"在 {subdir} 中没有找到 image.jpg 文件。跳过此目录。")
+        # 尝试使用 image.jpg 或 image.png 作为封面图
+        image_files = [f for f in os.listdir(subdir) if f.lower() in ['image.jpg', 'image.png']]
+        if not image_files:
+            print(f"在 {subdir} 中没有找到 image.jpg 或 image.png 文件。跳过此目录。")
             continue
+
+        # 使用找到的第一个图片文件作为封面
+        image_path = os.path.join(subdir, image_files[0])
 
         output_file_name = f"{safe_group_title}_{p}_{safe_title}.mp4"
         output_file_path = os.path.join(output_directory, output_file_name)
