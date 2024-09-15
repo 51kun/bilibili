@@ -62,6 +62,12 @@ def process_directory(directory_path, output_directory):
             print(f"读取 videoInfo.json 时发生错误: {e}")
             continue
 
+        # 明确指定封面图片的文件名
+        image_path = os.path.join(subdir, "image.jpg")
+        if not os.path.exists(image_path):
+            print(f"在 {subdir} 中没有找到 image.jpg 文件。跳过此目录。")
+            continue
+
         output_file_name = f"{safe_group_title}_{p}_{safe_title}.mp4"
         output_file_path = os.path.join(output_directory, output_file_name)
 
@@ -70,11 +76,16 @@ def process_directory(directory_path, output_directory):
             "-y",
             "-loglevel", "error",  # 只显示错误信息
             "-hwaccel", "cuda",
-            "-i", trimmed_video_file_path,
-            "-i", trimmed_audio_file_path,
-            "-c:v", "copy",
-            "-c:a", "copy",
-            output_file_path
+            "-i", trimmed_video_file_path,  # 输入视频文件
+            "-i", trimmed_audio_file_path,  # 输入音频文件
+            "-i", image_path,  # 输入封面图片
+            "-map", "0:v:0",  # 映射视频流
+            "-map", "1:a:0",  # 映射音频流
+            "-map", "2",      # 映射封面图片流
+            "-c:v", "copy",  # 视频编码
+            "-c:a", "copy",  # 音频编码
+            "-disposition:2", "attached_pic",  # 指定封面图片
+            output_file_path  # 输出文件路径
         ]
 
         ffmpeg_start_time = time.time()
