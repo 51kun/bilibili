@@ -62,16 +62,12 @@ def process_directory(directory_path, output_directory):
             print(f"读取 videoInfo.json 时发生错误: {e}")
             continue
 
-        # 尝试使用 image.jpg 或 image.png 作为封面图
-        image_files = [f for f in os.listdir(subdir) if f.lower() in ['image.jpg', 'image.png']]
-        if not image_files:
-            print(f"在 {subdir} 中没有找到 image.jpg 或 image.png 文件。跳过此目录。")
-            continue
+        # 根据条件修改文件名
+        if safe_group_title == safe_title:
+            output_file_name = f"{safe_group_title}_{p}.mp4"
+        else:
+            output_file_name = f"{safe_group_title}_{p}_{safe_title}.mp4"
 
-        # 使用找到的第一个图片文件作为封面
-        image_path = os.path.join(subdir, image_files[0])
-
-        output_file_name = f"{safe_group_title}_{p}_{safe_title}.mp4"
         output_file_path = os.path.join(output_directory, output_file_name)
 
         ffmpeg_command = [
@@ -81,13 +77,10 @@ def process_directory(directory_path, output_directory):
             "-hwaccel", "cuda",
             "-i", trimmed_video_file_path,  # 输入视频文件
             "-i", trimmed_audio_file_path,  # 输入音频文件
-            "-i", image_path,  # 输入封面图片
             "-map", "0:v:0",  # 映射视频流
             "-map", "1:a:0",  # 映射音频流
-            "-map", "2",      # 映射封面图片流
             "-c:v", "copy",  # 视频编码
             "-c:a", "copy",  # 音频编码
-            "-disposition:2", "attached_pic",  # 指定封面图片
             output_file_path  # 输出文件路径
         ]
 
