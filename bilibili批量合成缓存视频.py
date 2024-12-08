@@ -34,11 +34,23 @@ def process_directory(directory_path, output_directory):
         subdir = entry.path
 
         m4s_files = [os.path.join(subdir, f) for f in os.listdir(subdir) if f.endswith('.m4s')]
-        if len(m4s_files) != 2:
-            print(f"在子目录 {subdir} 中没有找到两个 .m4s 文件。")
+        if len(m4s_files) < 2:
+            print(f"在子目录 {subdir} 中没有找到足够的 .m4s 文件。")
             continue
         
-        video_file_path, audio_file_path = m4s_files
+        # 根据文件名规则选择视频和音频流
+        video_file_path = None
+        audio_file_path = None
+        for m4s_file in m4s_files:
+            if "-1-1" in os.path.basename(m4s_file):
+                video_file_path = m4s_file
+            elif "-1-3" in os.path.basename(m4s_file):
+                audio_file_path = m4s_file
+
+        if not video_file_path or not audio_file_path:
+            print(f"在子目录 {subdir} 中没有找到匹配的音频或视频流文件。")
+            continue
+
         trimmed_video_file_path = os.path.join(output_directory, f"#{os.path.basename(video_file_path)}")
         trimmed_audio_file_path = os.path.join(output_directory, f"#{os.path.basename(audio_file_path)}")
 
@@ -101,7 +113,8 @@ def process_directory(directory_path, output_directory):
                 print(f"删除文件时发生错误: {e}")
 
 if __name__ == "__main__":
-    input_directory = r"C:\Users\wuwuy\Videos\bilibili"
-    output_directory = r"C:\Users\wuwuy\Desktop\bili"
+    # 获取当前用户的 "Videos" 文件夹路径
+    input_directory = os.path.expanduser(r"~\Videos\bilibili")
+    output_directory = os.path.expanduser(r"~\Desktop\bili")
     buffer_size_mb = 1024  # 以 MB 为单位设置 buffer_size
     process_directory(input_directory, output_directory)
