@@ -20,6 +20,21 @@ def save_trimmed_file(file_path, output_file_path, buffer_size_mb=1):
     except (FileNotFoundError, IOError) as e:
         print(f"处理文件时发生错误: {e}")
 
+def get_stream_type(file_path, stream_type="v:0"):
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", stream_type, "-show_entries", "stream=codec_type", "-of", "default=noprint_wrappers=1:nokey=1", file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        if result.returncode == 0:
+            return result.stdout.decode().strip()  # 返回流类型
+        else:
+            return None
+    except Exception as e:
+        print(f"无法检查流类型: {e}")
+        return None
+
 def process_directory(directory_path, output_directory):
     if not os.path.isabs(directory_path) or not os.path.isabs(output_directory):
         print("请提供目录的绝对路径。")
@@ -37,25 +52,21 @@ def process_directory(directory_path, output_directory):
         if len(m4s_files) < 2:
             print(f"在子目录 {subdir} 中没有找到足够的 .m4s 文件。")
             continue
+
+        # 对两个 m4s 文件进行 save_trimmed_file 处理
+        trimmed_video_file_path = os.path.join(output_directory, f"#{os.path.basename(m4s_files[0])}")
+        trimmed_audio_file_path = os.path.join(output_directory, f"#{os.path.basename(m4s_files[1])}")
         
-        # 根据文件名规则选择视频和音频流
-        video_file_path = None
-        audio_file_path = None
-        for m4s_file in m4s_files:
-            if "-1-1" in os.path.basename(m4s_file):
-                video_file_path = m4s_file
-            elif "-1-3" in os.path.basename(m4s_file):
-                audio_file_path = m4s_file
+        save_trimmed_file(m4s_files[0], trimmed_video_file_path)
+        save_trimmed_file(m4s_files[1], trimmed_audio_file_path)
 
-        if not video_file_path or not audio_file_path:
-            print(f"在子目录 {subdir} 中没有找到匹配的音频或视频流文件。")
+        # 判断处理后的文件流类型（临时文件）
+        video_stream_type = get_stream_type(trimmed_video_file_path, "v:0")
+        audio_stream_type = get_stream_type(trimmed_audio_file_path, "a:0")
+
+        if video_stream_type != 'video' or audio_stream_type != 'audio':
+            print(f"在子目录 {subdir} 中，无法正确识别音频或视频流。")
             continue
-
-        trimmed_video_file_path = os.path.join(output_directory, f"#{os.path.basename(video_file_path)}")
-        trimmed_audio_file_path = os.path.join(output_directory, f"#{os.path.basename(audio_file_path)}")
-
-        save_trimmed_file(video_file_path, trimmed_video_file_path)
-        save_trimmed_file(audio_file_path, trimmed_audio_file_path)
 
         json_file_path = os.path.join(subdir, "videoInfo.json")
         if not os.path.exists(json_file_path):
