@@ -34,7 +34,7 @@ def save_trimmed_file(file_path, buffer_size_mb=1):
     buffer_size = buffer_size_mb * 1024 * 1024  # 转换为字节
     try:
         output_file_path = os.path.join(os.path.dirname(file_path), f"#{os.path.basename(file_path)}")
-        
+
         with open(file_path, "rb") as file, open(output_file_path, "wb") as output_file:
             file.seek(9)  # 跳过文件开头的9个字节
             while chunk := file.read(buffer_size):
@@ -102,21 +102,44 @@ def process_m4s_files(directory_path):
                 # 合成音视频流
                 output_file_name = f"{safe_group_title}_{p}_{safe_title}.mp4" if safe_group_title != safe_title else f"{safe_group_title}_{p}.mp4"
                 output_file_path = os.path.join(output_directory, output_file_name)
+                # 封面图片路径
+                cover_image_path = os.path.join(subdir, "image.jpg")
 
-                # 使用 ffmpeg 合成音视频流，不进行重新编码，使用 CUDA 硬件加速
-                ffmpeg_command = [
-                    "ffmpeg",
-                    "-y",  # 覆盖输出文件
-                    "-loglevel", "error",  # 只显示错误信息
-                    "-hwaccel", "cuda",  # 启用 CUDA 硬件加速
-                    "-i", video_file,  # 输入视频文件
-                    "-i", audio_file,  # 输入音频文件
-                    "-map", "0:v:0",  # 映射视频流
-                    "-map", "1:a:0",  # 映射音频流
-                    "-c:v", "copy",  # 视频流复制（不重新编码）
-                    "-c:a", "copy",  # 音频流复制（不重新编码）
-                    output_file_path  # 输出文件路径
-                ]
+                if os.path.exists(cover_image_path):
+                    print(f"找到封面图片: {cover_image_path}")
+                    # 使用 ffmpeg 合成音视频流并添加封面图片
+                    ffmpeg_command = [
+                        "ffmpeg",
+                        "-y",  # 覆盖输出文件
+                        "-loglevel", "error",  # 只显示错误信息
+                        "-hwaccel", "cuda",  # 启用 CUDA 硬件加速
+                        "-i", video_file,  # 输入视频文件
+                        "-i", audio_file,  # 输入音频文件
+                        "-i", cover_image_path,  # 输入封面图片
+                        "-map", "0:v:0",  # 映射视频流
+                        "-map", "1:a:0",  # 映射音频流
+                        "-map", "2",  # 映射封面图片
+                        "-c:v", "copy",  # 视频流复制（不重新编码）
+                        "-c:a", "copy",  # 音频流复制（不重新编码）
+                        "-disposition:v:1", "attached_pic",  # 设置封面图片为附加图片
+                        output_file_path  # 输出文件路径
+                    ]
+                else:
+                    print("未找到封面图片，跳过封面添加。")
+                    # 不包含封面图片的合成命令
+                    ffmpeg_command = [
+                        "ffmpeg",
+                        "-y",  # 覆盖输出文件
+                        "-loglevel", "error",  # 只显示错误信息
+                        "-hwaccel", "cuda",  # 启用 CUDA 硬件加速
+                        "-i", video_file,  # 输入视频文件
+                        "-i", audio_file,  # 输入音频文件
+                        "-map", "0:v:0",  # 映射视频流
+                        "-map", "1:a:0",  # 映射音频流
+                        "-c:v", "copy",  # 视频流复制（不重新编码）
+                        "-c:a", "copy",  # 音频流复制（不重新编码）
+                        output_file_path  # 输出文件路径
+                    ]
 
                 # 执行合成命令
                 subprocess.run(ffmpeg_command)
@@ -143,3 +166,6 @@ if __name__ == "__main__":
     # 先处理 m4s 文件，然后再处理合成音视频流
     process_directory_files(input_directory)
     process_m4s_files(input_directory)
+
+    # 等待用户输入后退出程序
+    input("所有任务已完成。按 Enter 键退出程序...")
